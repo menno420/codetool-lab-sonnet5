@@ -10,12 +10,13 @@ Where the two legitimately diverge, the case is kept (never deleted) and marked
 * "documented divergence" -- our env_parser docstring deliberately specifies different
   behaviour (shell-literal single quotes; full ``unicode_escape`` repertoire in double
   quotes; ``#`` preceded by whitespace always starts a comment in unquoted values).
-* "known gap" -- behaviour that contradicts our own docstring, surfaced by this corpus
-  and tracked as follow-up work (escape-unaware closing-quote scan; non-ASCII mojibake
-  in double-quoted values; value-initial ``#`` swallowed in unquoted values).
+``strict=True`` means fixing a divergence without updating its marker fails the suite,
+so the corpus stays honest in both directions.
 
-``strict=True`` means fixing a gap without updating its marker fails the suite, so the
-corpus stays honest in both directions.
+The three "known gap" cases this corpus originally surfaced (escape-unaware
+closing-quote scan; non-ASCII mojibake in double-quoted values; value-initial ``#``
+swallowed in unquoted values) were fixed in 0.1.1 and are now ordinary passing cases,
+with extra regression cases alongside them.
 """
 
 from __future__ import annotations
@@ -66,12 +67,11 @@ CORPUS = [
     case("dq-newline-escape", 'KEY="line1\\nline2"\n'),
     case("dq-tab-escape", 'KEY="a\\tb"\n'),
     case("dq-escaped-backslash", 'KEY="a\\\\b"\n'),
-    xfail_case(
-        "dq-escaped-quote",
-        'KEY="a\\"b"\n',
-        "known gap: docstring promises \\\" support but the closing-quote scan is "
-        "escape-unaware, so parsing raises ParseError; python-dotenv reads 'a\"b'",
-    ),
+    case("dq-escaped-quote", 'KEY="a\\"b"\n'),
+    case("dq-escaped-quote-at-end", 'KEY="ends\\""\n'),
+    case("dq-escaped-quote-then-comment", 'KEY="a\\"b" # c\n'),
+    case("dq-backslash-before-close", 'KEY="a\\\\"\n'),
+    case("dq-unknown-escape-kept", 'KEY="a\\qb"\n'),
     xfail_case(
         "dq-unicode-escape",
         'KEY="\\u00e9"\n',
@@ -99,13 +99,9 @@ CORPUS = [
         "documented divergence: '#' preceded by whitespace starts a comment for us "
         "even at value start (-> ''); python-dotenv reads the value '# comment'",
     ),
-    xfail_case(
-        "unquoted-color",
-        "COLOR=#ff0000\n",
-        "known gap: our docstring cites colors as motivation for keeping unspaced '#', "
-        "but a value-initial '#' matches the ^-anchored comment regex and the value is "
-        "swallowed to ''; python-dotenv reads '#ff0000'",
-    ),
+    case("unquoted-color", "COLOR=#ff0000\n"),
+    case("unquoted-color-then-comment", "COLOR=#ff0000 # red\n"),
+    case("unquoted-hash-only", "KEY=#\n"),
     # --- whitespace and line endings ---
     case("leading-trailing-ws", "  KEY=value  \n"),
     case("value-tabs-stripped", "KEY=\ta\t\n"),
@@ -117,12 +113,8 @@ CORPUS = [
     # --- non-ASCII ---
     case("nonascii-unquoted", "KEY=héllo\n"),
     case("nonascii-sq", "KEY='héllo'\n"),
-    xfail_case(
-        "nonascii-dq",
-        'KEY="héllo"\n',
-        "known gap: non-ASCII inside double quotes is mojibaked ('hÃ©llo') by the "
-        "utf-8 -> unicode_escape round-trip; python-dotenv reads 'héllo'",
-    ),
+    case("nonascii-dq", 'KEY="héllo"\n'),
+    case("nonascii-dq-with-escape", 'KEY="héllo\\nwörld"\n'),
 ]
 
 

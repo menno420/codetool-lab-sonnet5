@@ -173,4 +173,4 @@ class TestHelp:
     def test_version_flag(self, run_cli):
         result = run_cli("--version")
         assert result.returncode == 0
-        assert "0.1.0" in result.stdout
+        assert "0.1.1" in result.stdout
