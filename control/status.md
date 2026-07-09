@@ -1,53 +1,34 @@
 # codetool-lab-sonnet5 · status
-updated: 2026-07-09T17:27Z
-phase: 0.1.1 ready to release — one owner tag push releases everything
+updated: 2026-07-09T20:02:14Z
+phase: wind-down complete — ready for archive + fresh session
 health: green
-last-shipped: #11 — fix: env parser escape/unicode/hash-value bugs found by differential corpus; 0.1.1, squash-merged to main at 0b1eb60
+last-shipped: #15 — succession: wind-down pack (whole-life review, NEXT-BOOT guide, proposed gen-2 custom instructions, tested env spec + setup script, gen-2 blueprint feedback), squash-merged to main at a28f7d3. Also this session: #14 — PING-ACK ORDER 004 (discovered 2026-07-09T19:53:36Z via session-start inbox read, acked before all other wind-down work).
 blockers: none
-orders: acked=001,002,003 done=001,002,003
+orders: acked=001,002,003,004 done=001,002,003,004
 ⚑ needs-owner:
-  1. [2 min, biggest payoff] Register the PyPI trusted publisher: pypi.org → your account →
-     Publishing → "Add a pending publisher" with owner `menno420`, repository
-     `codetool-lab-sonnet5`, workflow `release.yml`, environment `pypi`. Click-by-click
-     steps in docs/retro/project-review-2026-07-09.md §(e)3. Without this the release
-     workflow's publish-pypi job fails cleanly (OIDC invalid-publisher); the GitHub
-     release itself is unaffected.
-  2. Push tag v0.1.1 at current main:
-     `git tag -a v0.1.1 0b1eb60 -m "cfgdiff 0.1.1" && git push origin v0.1.1`.
-     This single push runs the test gate, builds sdist+wheel, cuts the GitHub release
-     with the CHANGELOG 0.1.1 section as body and artifacts attached, and — if item 1 is
-     done first — publishes cfgdiff 0.1.1 to PyPI. Tag push is owner-only (agents get
-     HTTP 403 at the git proxy). Decide-and-flag: we recommend releasing 0.1.1 directly
-     and treating v0.1.0 as optional/historical — a v0.1.0 tag at 0260aae would NOT carry
-     release.yml (added later, in #9), so pushing it would not fire the workflow at all;
-     tag it only if you want the historical marker, expect no automation from it.
-  3. Delete leftover probe branch `test/push-check` (cosmetic; branch delete re-probed
-     2026-07-09, still HTTP 403 for agents). §(e)4.
-  4. Alternative if you skip item 1: manual PyPI upload — `python -m build` then
-     `twine upload dist/*` with a pypi.org API token (username `__token__`), full steps
-     in docs/retro/project-review-2026-07-09.md §(e)1.
+  1. [2 min, biggest payoff] Register the PyPI trusted publisher: pypi.org → Publishing →
+     "Add a pending publisher" with owner `menno420`, repository `codetool-lab-sonnet5`,
+     workflow `release.yml`, environment `pypi`. Click-by-click steps in
+     docs/retro/project-review-2026-07-09.md §(e)3.
+  2. Release 0.1.1 with one push:
+     `git tag -a v0.1.1 0b1eb60 -m "cfgdiff 0.1.1" && git push origin v0.1.1`
+     — runs the test gate, builds sdist+wheel, cuts the GitHub release with the CHANGELOG
+     0.1.1 section as body, and (if item 1 is done first) publishes to PyPI. Do NOT tag
+     v0.1.0 at 0260aae expecting automation — it predates release.yml and would fire nothing.
+  3. Optional, cosmetic: delete leftover probe branch `test/push-check` (agents get
+     HTTP 403 on branch deletes).
 notes: |
-  Bugfix pass executed with zero owner input: PR #11 (READY, squash-merged on green CI at
-  0b1eb60) fixed all three .env parser bugs the differential corpus had flagged as strict
-  "known gap" xfails, each of which contradicted the parser's own docstring:
-  (1) KEY="a\"b" no longer raises ParseError — the closing-quote scan is escape-aware;
-  (2) KEY="héllo" no longer mojibakes to "hÃ©llo" — escapes are decoded per-sequence
-  (\n/\t/\uXXXX/\N{NAME}/octal/hex) instead of round-tripping the whole value through
-  unicode_escape, so literal non-ASCII passes through and unknown escapes (\q) are kept
-  literally; (3) COLOR=#ff0000 is no longer swallowed to "" — a '#' starts an inline
-  comment only when preceded by whitespace (including whitespace right after '=', so
-  KEY= # note is still ""). Docstring rewritten to state exactly the implemented policy.
-  The 3 gap xfails were flipped to ordinary passing cases and 7 regression cases added
-  (escaped quote at end / before comment, backslash before closing quote, unknown escape
-  kept, color+inline-comment, bare KEY=#, non-ASCII mixed with escapes), all verified
-  against python-dotenv. The 4 deliberate documented-divergence xfails are byte-for-byte
-  untouched and still strict-xfail. Suite: 165 passed + 4 xfailed (was 155 + 7), zero
-  warnings even under -W error::DeprecationWarning; ruff clean.
-  Version bumped 0.1.0 → 0.1.1 everywhere it appears (pyproject.toml, cfgdiff.__version__,
-  README status line, the --version CLI test). CHANGELOG: previous Unreleased content plus
-  the three fixes moved into "## [0.1.1] - 2026-07-09"; an empty "## [Unreleased]" heading
-  kept; link reference added. release.yml's changelog-extraction script was dry-run
-  against the new CHANGELOG and finds the 0.1.1 section, so a v0.1.1 tag push produces a
-  correctly-bodied GitHub release. Honest caveat: the tag-triggered workflow end-to-end
-  remains untestable from agent sessions (tag push is owner-only), so item 2 above is its
-  first real firing.
+  Gen-1 ends here, deliberately and in order. The tool is real: cfgdiff 0.1.1 is on main,
+  independently verified, 165 tests + 4 deliberate xfails, CI green across 3 Python
+  versions, installable today by any stranger via
+  `pipx install git+https://github.com/menno420/codetool-lab-sonnet5`; PyPI is one owner
+  click plus one tag push away. Everything the next session needs survives in git:
+  docs/succession/ (start at NEXT-BOOT.md) and docs/retro/winddown-review-2026-07-09.md
+  carry the queue, the walls with exact error text, and the lessons — the biggest being
+  that a differential oracle found 3 real bugs behind 114 green tests, and that the
+  platform's silent failure modes (dead-at-setup vs not-yet-woken, indistinguishable)
+  cost more wall-clock than every loud error combined. The fleet gen-2 blueprint was
+  reachable at wind-down and this lane's experience largely confirms it; disagreements
+  and additions are in docs/succession/GEN2-FEEDBACK.md. Honest residue: release.yml has
+  never actually fired (tag push is owner-only), so its first real run is item 2 above.
+  Good night, gen-1.
