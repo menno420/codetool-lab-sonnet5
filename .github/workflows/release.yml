@@ -1,0 +1,80 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # needed to create the GitHub release for the tag
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install package with dev dependencies
+        run: pip install -e .[dev]
+
+      - name: Run test suite (release gate)
+        run: pytest
+
+      - name: Build sdist and wheel
+        run: python -m build
+
+      - name: Extract changelog section for this version
+        run: |
+          python - "${GITHUB_REF_NAME#v}" > release-notes.md <<'EOF'
+          import re
+          import sys
+
+          version = sys.argv[1]
+          text = open("CHANGELOG.md", encoding="utf-8").read()
+          m = re.search(
+              rf"^## \[{re.escape(version)}\][^\n]*\n(.*?)(?=^## \[|\Z)",
+              text,
+              re.M | re.S,
+          )
+          if not m:
+              sys.exit(f"no '## [{version}]' section found in CHANGELOG.md")
+          print(m.group(1).strip())
+          EOF
+
+      - name: Create GitHub release with dist artifacts
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: release-notes.md
+          files: dist/*
+
+      - name: Upload dist for the publish job
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  # Publishes via PyPI trusted publishing (no token). This job requires the owner
+  # to have registered a trusted publisher on pypi.org (owner menno420, repo
+  # codetool-lab-sonnet5, workflow release.yml, environment pypi). Until that is
+  # done, this job fails cleanly at the publish step with an OIDC "invalid-publisher"
+  # error from PyPI, without affecting the release created by build-and-release.
+  publish-pypi:
+    needs: build-and-release
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write # required for PyPI trusted publishing (OIDC)
+    steps:
+      - name: Download dist
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1

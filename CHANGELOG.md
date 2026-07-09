@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Tag-triggered release automation (`.github/workflows/release.yml`): pushing a `v*` tag
+  builds sdist+wheel, runs the test suite as a gate, creates a GitHub release whose body is
+  the matching CHANGELOG section (artifacts attached), then publishes to PyPI via trusted
+  publishing (`pypi` environment; fails cleanly until the trusted publisher is registered).
+- Differential .env test corpus (`tests/test_dotenv_differential.py`) comparing our parser
+  against python-dotenv's `dotenv_values` across quoting, escaping, comment, whitespace,
+  and CRLF edge cases; deliberate divergences and known gaps are tracked as strict xfails.
+- `python-dotenv` added to the `dev` extra (test-only; runtime dependencies unchanged).
+
 ## [0.1.0] - 2026-07-09
 
 ### Added
