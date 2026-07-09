@@ -317,7 +317,7 @@ pytest
 
 ## Status
 
-`cfgdiff` is `0.1.0`. It is not yet published to PyPI -- install from GitHub (see above)
+`cfgdiff` is `0.1.1`. It is not yet published to PyPI -- install from GitHub (see above)
 until it is. See `CHANGELOG.md` for release history.
 
 ## License

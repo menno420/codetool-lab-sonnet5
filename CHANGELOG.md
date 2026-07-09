@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-07-09
+
 ### Added
 
 - Tag-triggered release automation (`.github/workflows/release.yml`): pushing a `v*` tag
@@ -17,6 +19,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   against python-dotenv's `dotenv_values` across quoting, escaping, comment, whitespace,
   and CRLF edge cases; deliberate divergences and known gaps are tracked as strict xfails.
 - `python-dotenv` added to the `dev` extra (test-only; runtime dependencies unchanged).
+
+### Fixed
+
+Three `.env` parser bugs found by the differential corpus (each contradicted the parser's
+own documented behaviour):
+
+- Escaped double quotes inside double-quoted values (`KEY="a\"b"`) no longer raise
+  `ParseError`: the closing-quote scan is now escape-aware, so the value parses to `a"b`.
+- Non-ASCII text inside double-quoted values (`KEY="héllo"`) is no longer mojibaked
+  (`hÃ©llo`): backslash escapes are decoded per-sequence instead of round-tripping the
+  whole value through `unicode_escape`, so `\n`/`\t`/`\uXXXX` etc. still work while
+  literal Unicode passes through untouched. Unknown escapes (`\q`) are kept literally.
+- A value-initial `#` in unquoted values (`COLOR=#ff0000`) is no longer swallowed as a
+  comment: `#` starts an inline comment only when preceded by whitespace (including the
+  whitespace right after `=`, so `KEY= # note` is still `""`).
 
 ## [0.1.0] - 2026-07-09
 
@@ -37,4 +54,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Full pytest suite (114 tests) and `ruff` lint config.
 - GitHub Actions CI across Python 3.10, 3.11, 3.12.
 
+[0.1.1]: https://github.com/menno420/codetool-lab-sonnet5/releases/tag/v0.1.1
 [0.1.0]: https://github.com/menno420/codetool-lab-sonnet5/releases/tag/v0.1.0

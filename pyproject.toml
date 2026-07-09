@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "cfgdiff"
-version = "0.1.0"
+version = "0.1.1"
 description = "Semantic config diff/convert across JSON, YAML, TOML, INI, and .env files"
 readme = "README.md"
 requires-python = ">=3.10"
