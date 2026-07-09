@@ -1,11 +1,9 @@
 # codetool-lab-sonnet5 · status
-updated: 2026-07-09T13:31Z
-phase: seeded; Project not yet started
-health: green (nothing running yet)
+updated: 2026-07-09T15:20Z
+phase: building — cross-format semantic config diff/convert CLI (parses JSON/YAML/TOML/INI/.env; diff/convert/validate subcommands); implementation, tests, and CI in progress on branch `feat/cli-tool`, PR not yet merged
+health: green (actively worked, no blocker)
 last-shipped: —
 blockers: none
-orders: acked= done=
+orders: acked=001,002 done=
 ⚑ needs-owner: none
-notes: model-comparison coding arm; task in Project Custom Instructions.
-
-⟵ manager-seeded starting point — codetool-lab-sonnet5, overwrite this with your own status on your first run.
+notes: interim heartbeat per ORDER 002 — this status.md overwrite is a lightweight parallel commit to prove activity; the real build continues in another session on `feat/cli-tool`.
