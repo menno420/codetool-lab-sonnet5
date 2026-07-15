@@ -1,0 +1,139 @@
+name: merge-on-green
+
+# REST verify-then-squash-merge sweep, modeled on menno420/fleet-manager's
+# merge-on-green.yml. Installed because this repo (a small test/lab repo)
+# has no merge-automation mechanism at all — only `ci.yml` (lint + pytest)
+# and `release.yml` (manual dispatch), neither of which merges anything.
+#
+# No head-branch-prefix filter: this repo has too little history to infer
+# a dominant branch convention, so any open, non-draft, same-repo PR
+# targeting main is eligible.
+#
+# CARVE-OUTS:
+#   * labels `do-not-automerge` / `owner-held` — never merged, re-read
+#     fresh from the API each sweep (never trusted from a stale event
+#     payload).
+#   * any PR whose diff touches `.github/workflows/**` — owner-merge-only.
+#     This PR is itself one of those; it is left for the owner to merge by
+#     hand rather than self-approving its own installation. Recommended
+#     default, not forced — drop this carve-out if zero-exception
+#     auto-merge (including workflow PRs) is preferred instead.
+#
+# Reliability: unverified — confirm its merges against ground truth a few
+# times before trusting it; delete it if it misfires.
+
+on:
+  check_suite:
+    types: [completed]
+  pull_request:
+    types: [ready_for_review, synchronize, labeled, unlabeled]
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+  schedule:
+    - cron: "12,42 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: read
+
+concurrency:
+  group: merge-on-green
+  cancel-in-progress: false
+
+jobs:
+  merge-on-green:
+    if: github.repository == 'menno420/codetool-lab-sonnet5'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sweep open PRs and squash-merge the fully-green ones
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 - <<'PY'
+          import json, os, subprocess, sys
+
+          repo = os.environ["GITHUB_REPOSITORY"]
+          PARK_LABELS = {"do-not-automerge", "owner-held"}
+          SELF_CHECK_NAMES = {"merge-on-green"}
+
+          def gh(*args, ok_fail=False):
+              r = subprocess.run(["gh", *args], capture_output=True, text=True)
+              if r.returncode != 0 and not ok_fail:
+                  print(r.stderr, file=sys.stderr)
+                  sys.exit(1)
+              return r.returncode, r.stdout, r.stderr
+
+          def parse_lines(out):
+              vals = []
+              for line in out.splitlines():
+                  if not line:
+                      continue
+                  v = json.loads(line)
+                  vals.append(json.loads(v) if isinstance(v, str) else v)
+              return vals
+
+          _, out, _ = gh("api", f"repos/{repo}/pulls?state=open&per_page=100",
+                         "--paginate", "--jq", ".[] | @json")
+          prs = parse_lines(out)
+
+          merged, skipped = [], []
+          for pr in prs:
+              n = pr["number"]
+              head_ref = pr["head"]["ref"]
+              head_sha = pr["head"]["sha"]
+              if pr.get("draft"):
+                  skipped.append((n, "draft")); continue
+              if pr["base"]["ref"] != "main":
+                  skipped.append((n, "base != main")); continue
+              if (pr["head"]["repo"] or {}).get("full_name") != repo:
+                  skipped.append((n, "fork head")); continue
+
+              _, out, _ = gh("api", f"repos/{repo}/issues/{n}/labels",
+                             "--jq", "[.[].name]")
+              park = set(json.loads(out or "[]")) & PARK_LABELS
+              if park:
+                  skipped.append((n, f"ratification park: {sorted(park)}")); continue
+
+              _, out, _ = gh("api", f"repos/{repo}/pulls/{n}/files?per_page=100",
+                             "--paginate", "--jq", ".[] | @json")
+              entries = parse_lines(out)
+              files = [e["filename"] for e in entries]
+
+              if any(f.startswith(".github/workflows/") for f in files):
+                  skipped.append((n, ".github/workflows/** in diff — "
+                                     "owner-merge-only")); continue
+
+              _, out, _ = gh("api",
+                             f"repos/{repo}/commits/{head_sha}/check-runs"
+                             "?filter=latest&per_page=100", "--paginate",
+                             "--jq", '.check_runs[] | {name, status, conclusion} | @json')
+              runs = {cr["name"]: cr for cr in parse_lines(out)
+                      if cr["name"] not in SELF_CHECK_NAMES}
+              if not runs:
+                  skipped.append((n, "no check runs on head SHA — "
+                                     "nothing verified")); continue
+              not_ready = [f"{name}: {cr['status']}/{cr['conclusion']}"
+                           for name, cr in sorted(runs.items())
+                           if cr["status"] != "completed"
+                           or cr["conclusion"] != "success"]
+              if not_ready:
+                  skipped.append((n, "; ".join(not_ready))); continue
+
+              rc, mout, merr = gh("pr", "merge", str(n), "--repo", repo,
+                                  "--squash", "--match-head-commit", head_sha,
+                                  "--body", f"Head-ref: {head_ref}",
+                                  ok_fail=True)
+              if rc == 0:
+                  print(f"MERGED PR #{n} ({head_ref} @ {head_sha[:12]})")
+                  merged.append(n)
+              else:
+                  print(f"::warning::merge failed for PR #{n}: {merr.strip()}")
+                  skipped.append((n, "merge call failed (see warning)"))
+
+          for n, why in skipped:
+              print(f"skipped PR #{n}: {why}")
+          print(f"sweep done — merged: {merged or 'none'}")
+          PY
