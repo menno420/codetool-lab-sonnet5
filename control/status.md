@@ -30,5 +30,9 @@ notes: |
   cost more wall-clock than every loud error combined. The fleet gen-2 blueprint was
   reachable at wind-down and this lane's experience largely confirms it; disagreements
   and additions are in docs/succession/GEN2-FEEDBACK.md. Honest residue: release.yml has
-  never actually fired (tag push is owner-only), so its first real run is item 2 above.
+  never actually fired — it triggers on a `v*` tag push, and direct git tag-push 403s from an
+  agent seat (the fleet-proven fix is to add a `workflow_dispatch` trigger and dispatch it
+  agent-side, as codetool-lab-opus4.8's release.yml does; or the owner pushes the tag). The
+  PyPI publish itself still needs the owner (trusted-publisher registration + token). Its
+  first real run is item 2 above.
   Good night, gen-1.
